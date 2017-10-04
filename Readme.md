@@ -53,3 +53,6 @@ start openvpn server on your PC (tray icon->connect)
 you may have to import the configuration for the first time
 
 Run this script  (`streaming --debug`)
+
+## TODO
+- [ ] add server config
