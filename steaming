@@ -1,0 +1,139 @@
+#!/bin/bash
+################################ STEAM STREAMING ##############################
+# steam streaming -> steaming
+#
+# -------------------------------- INTODUCTION --------------------------------
+# When reading https://lg.io/2015/07/05/revised-and-much-faster-run-your-own-highend-cloud-gaming-service-on-ec2.html
+# I wanted to do that myself; just not on AWS, since I already own a gaming PC.
+# I did more-or-less the same setup, connectivity-wise, and am now able to
+# connect with my PC!
+#
+# This script is only the client part, and should work for the AWS setup as well.
+#
+# -------------------------------- REQUIREMENTS -------------------------------
+# - server: a windows PC, reachable via port-forwarding
+# - client: a linux laptop
+#
+# ----------------------------------- SETUP -----------------------------------
+# Install openvpn on your PC; use the 64 bit version, unless your PC is 32 bits
+# please install all components
+#
+# copy server.ovpn from this repo into "C:\Program Files\OpenVPN\config\"
+#
+# open a powershell window and run the following commands:
+#     cd C:\Program Files\OpenVPN\easy-rsa
+#     init-config
+#     vars
+#     clean-all
+#     build-ca			(leave all answers blank)
+#     build-key-server server	(leave all answers blank except Common Name "server", yes to Sign and yes to Commit)
+#     build-key client		(leave all answers blank except Common Name "client", yes to Sign and yes to Commit)
+#     build-dh
+#     robocopy keys ../config ca.crt dh1024.pem server.crt server.key
+#
+# then copy to following files from "C:\Program Files\OpenVPN\easy-rsa\keys\"
+# to /etc/openvpn/ on your client:
+# - ca.crt
+# - client.crt
+# - client.key
+#
+# change the following in client.ovpn:
+# - MY_HOSTNAME into the IP or domain name of the windows pc
+#
+# copy client.ovpn from this repo into /etc/openvpn/
+#
+# open port 1194/UDP on your router, and point it to your windows PC
+#
+# copy this script (steaming) to ~/bin/
+# and make it executable (chmod +x ~/bin/steaming)
+#
+# ---------------------------------- CONNECT ----------------------------------
+# start openvpn server on your PC (tray icon->connect)
+# you may have to import the configuration for the first time
+#
+# run this script  (streaming --debug)
+
+debug="false"
+if [[ "$1" == "--debug" ]];
+then
+	debug="true";
+fi
+dbg() {
+	if [[ $debug == "true" ]];
+	then
+		echo $@ >&2
+	fi
+}
+
+dbg "checking dependencies"
+dependencies="route grep awk head kill pkill openvpn ifconfig tshark script xxd socat"
+for dep in $dependencies;
+do
+	if ! command -v "${dep}" >/dev/null;
+	then
+		echo "please install ${dep}" >&2
+		exit 1
+	fi
+done
+dbg "dependencies checked"
+
+dbg "check for permissions (root)"
+if [[ "$EUID" -ne 0 ]];
+then
+	echo "please run as root (e.g. sudo)" >&2;
+	exit 2;
+fi
+dbg "checked for permissions"
+
+dbg "setting default interface"
+# will be your default wifi/ethernet device
+# I did not yet test this with multiple interfaces,
+DEFAULT_INTERFACE=$(/sbin/route 2>/dev/null | grep '\b0.0.0.0\b' | awk '{print $8}' | head -n1)
+# probably no need to change this
+STEAM_PORT=27036
+dbg "default interface set to $DEFAULT_INTERFACE"
+
+
+
+# first we kill all the processes we started
+# we then use the exit command we all know and love <3
+exit() {
+	echo -n "cleaning up..."
+	sudo kill $(cat /var/run/openvpn.pid) 2>/dev/null
+	sudo pkill -P $(cat /var/run/openvpnup.pid)
+	echo "done"
+	builtin exit $1
+}
+
+trap exit 1 2 3 15
+
+dbg "starting openvpn"
+
+openvpn --config /etc/openvpn/client.ovpn --askpass /etc/openvpn/pass >/var/log/openvpn.log 2>/var/log/openvpn.err &
+echo $! > /var/run/openvpn.pid
+dbg "openvpn started with pid: $(cat /var/run/openvpn.pid)"
+dbg "waiting 5s for tap interface"
+sleep 5
+
+dbg "setting tap interface"
+# will most likely be "tap0"
+TAP_INTERFACE=$(ifconfig | grep tap | awk '{print $1}')
+dbg "tap interface set to $TAP_INTERFACE"
+
+
+
+dbg "starting broadcast packet capture"
+# we use:
+#   tshark to capture the broadcast packets which are used by steam to detect in-home streamers
+#   xxd to transform the captured hexdecimal packets into binary
+#   socat to relay the broadcast to the vpn server over the tap interface
+bash -c "tshark -i ${DEFAULT_INTERFACE} -T fields -e data -l 'udp and dst port ${STEAM_PORT}' \
+	| script -q /dev/null -c 'xxd -r -p' \
+	| socat - UDP-DATAGRAM:10.8.0.1:${STEAM_PORT},broadcast,so-bindtodevice=${TAP_INTERFACE}\
+	"&
+echo $! > /var/run/openvpnup.pid
+dbg "packet capture started with pid: $(cat /var/run/openvpnup.pid)"
+
+dbg "script finished"
+echo "script finished, shut down with Ctrl+C"
+wait
