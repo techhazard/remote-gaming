@@ -55,4 +55,4 @@ you may have to import the configuration for the first time
 Run this script  (`streaming --debug`)
 
 ## TODO
-- [ ] add server config
+- [x] add server config
