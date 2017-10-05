@@ -15,7 +15,7 @@ script instead of `up.sh` and `down.sh`. It will probably work for the AWS setup
 
 ## SETUP
 ### Server
-Install openvpn on your PC; use the 64 bit version, unless your PC is 32 bits.  
+Install openvpn on your windows PC; use the 64 bit version, unless your PC is 32 bits.  
 Please install all components
 
 Copy `server.ovpn` from this repo into `C:\Program Files\OpenVPN\config\`
@@ -34,7 +34,9 @@ robocopy keys ../config ca.crt dh1024.pem server.crt server.key
 ```
 
 ### Client
-then copy to following files from `C:\Program Files\OpenVPN\easy-rsa\keys\`
+Download these files to your client (select "download as zip") and extract them.
+
+Copy to following files from `C:\Program Files\OpenVPN\easy-rsa\keys\` on the server
 to `/etc/openvpn/` on your client:
 - `ca.crt`
 - `client.crt`
