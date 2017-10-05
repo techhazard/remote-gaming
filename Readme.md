@@ -2,23 +2,21 @@
 steam streaming -> steaming
 
 ## INTRODUCTION
-[When reading this blogpost about running a gaming PC in the cloud](https://lg.io/2015/07/05/revised-and-much-faster-run-your-own-highend-cloud-gaming-service-on-ec2.html)
-I wanted to do that myself; just not on AWS, since I already own a gaming PC.  
-I did more-or-less the same setup, connectivity-wise, and am now able to
-connect with my PC!
-
-This script is only the client part, and should work for the AWS setup as well.
+[When reading this blogpost about running a gaming PC in the cloud](https://lg.io/2015/07/05/revised-and-much-faster-run-your-own-highend-cloud-gaming-service-on-ec2.html)  
+I wanted to do that myself, just not on AWS, since I already own a gaming rig.  
+I did more-or-less the same setup, connectivity-wise, and am now able to connect with my PC!
 
 This is essentially the same setup as the blogpost, but you'll use the `steaming`  
-script instead of `up.sh` and `down.sh`
+script instead of `up.sh` and `down.sh`. It will probably work for the AWS setup as well.
 
 ## REQUIREMENTS
 - server: a windows PC, reachable via port-forwarding
-- client: a linux laptop
+- client: a linux pc (mac might work, if you can get the dependencies)
 
 ## SETUP
-Install openvpn on your PC; use the 64 bit version, unless your PC is 32 bits.
-please install all components
+### Server
+Install openvpn on your PC; use the 64 bit version, unless your PC is 32 bits.  
+Please install all components
 
 Copy `server.ovpn` from this repo into `C:\Program Files\OpenVPN\config\`
 
@@ -35,6 +33,7 @@ build-dh
 robocopy keys ../config ca.crt dh1024.pem server.crt server.key
 ```
 
+### Client
 then copy to following files from `C:\Program Files\OpenVPN\easy-rsa\keys\`
 to `/etc/openvpn/` on your client:
 - `ca.crt`
@@ -46,10 +45,29 @@ Change the following in `client.ovpn`:
 
 Copy `client.ovpn` from this repository into `/etc/openvpn/`
 
-Open port `1194/UDP` on your router, and point it to your windows PC
+Open port `1194/UDP` on your router, and point it to your windows PC  
 Look up "port forwarding YOUR_ROUTER_MODEL_HERE" if you don't know how to do this
 
 Copy the client script (`steaming`) to `/usr/local/bin/`
+
+Install these tools on the client:
+- `route`
+- `grep`
+- `awk`
+- `head`
+- `kill`
+- `pkill`
+- `openvpn`
+- `ifconfig`
+- `tshark`
+- `script`
+- `xxd`
+- `socat`
+
+For debian/ubuntu:
+```sh
+sudo apt install net-tools grep coreutils procps openvpn tshark bsdutils vim-common socat
+```
 
 ## CONNECT
 start openvpn server on your PC (tray icon->connect)
