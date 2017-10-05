@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "starting script"
+
 debug="false"
 if [[ "$1" == "--debug" ]];
 then
@@ -40,8 +42,6 @@ DEFAULT_INTERFACE=$(/sbin/route 2>/dev/null | grep '\b0.0.0.0\b' | awk '{print $
 STEAM_PORT=27036
 dbg "default interface set to $DEFAULT_INTERFACE"
 
-
-
 # first we kill all the processes we started
 # we then use the exit command we all know and love <3
 exit() {
@@ -59,10 +59,22 @@ dbg "starting openvpn"
 openvpn --config /etc/openvpn/client.ovpn --askpass /etc/openvpn/pass >/var/log/openvpn.log 2>/var/log/openvpn.err &
 echo $! > /var/run/openvpn.pid
 dbg "openvpn started with pid: $(cat /var/run/openvpn.pid)"
-dbg "waiting 5s for tap interface"
-sleep 5
+dbg "waiting for vpn connection"
 
-dbg "setting tap interface"
+i=0
+while ! grep 'Initialization Sequence Completed' /var/log/openvpn.log;
+do
+	sleep 0.2
+	((i++))
+	# abort if it takes 20s
+	if [[ $i -gt 100 ]];
+	then
+		exit 3
+	fi
+done
+dbg "vpn connection established"
+
+dbg "finding tap interface"
 # will most likely be "tap0"
 TAP_INTERFACE=$(ifconfig | grep tap | awk '{print $1}')
 dbg "tap interface set to $TAP_INTERFACE"
@@ -78,9 +90,9 @@ bash -c "tshark -i ${DEFAULT_INTERFACE} -T fields -e data -l 'udp and dst port $
 	| script -q /dev/null -c 'xxd -r -p' \
 	| socat - UDP-DATAGRAM:10.8.0.1:${STEAM_PORT},broadcast,so-bindtodevice=${TAP_INTERFACE}\
 	"&
+
 echo $! > /var/run/openvpnup.pid
 dbg "packet capture started with pid: $(cat /var/run/openvpnup.pid)"
 
-dbg "script finished"
 echo "script finished, shut down with Ctrl+C"
 wait
