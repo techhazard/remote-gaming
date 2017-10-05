@@ -2,19 +2,22 @@
 steam streaming -> steaming
 
 ## INTRODUCTION
-[When reading this blogpost about a gaming PC in the cloud](https://lg.io/2015/07/05/revised-and-much-faster-run-your-own-highend-cloud-gaming-service-on-ec2.html)
-I wanted to do that myself; just not on AWS, since I already own a gaming PC.
+[When reading this blogpost about running a gaming PC in the cloud](https://lg.io/2015/07/05/revised-and-much-faster-run-your-own-highend-cloud-gaming-service-on-ec2.html)
+I wanted to do that myself; just not on AWS, since I already own a gaming PC.  
 I did more-or-less the same setup, connectivity-wise, and am now able to
 connect with my PC!
 
 This script is only the client part, and should work for the AWS setup as well.
+
+This is essentially the same setup as the blogpost, but you'll use the `steaming`  
+script instead of `up.sh` and `down.sh`
 
 ## REQUIREMENTS
 - server: a windows PC, reachable via port-forwarding
 - client: a linux laptop
 
 ## SETUP
-Install openvpn on your PC; use the 64 bit version, unless your PC is 32 bits
+Install openvpn on your PC; use the 64 bit version, unless your PC is 32 bits.
 please install all components
 
 Copy `server.ovpn` from this repo into `C:\Program Files\OpenVPN\config\`
@@ -41,18 +44,18 @@ to `/etc/openvpn/` on your client:
 Change the following in `client.ovpn`:
 - `MY_HOSTNAME` into the IP or domain name of the router/windows pc
 
-Copy `client.ovpn` from this repo into `/etc/openvpn/`
+Copy `client.ovpn` from this repository into `/etc/openvpn/`
 
 Open port `1194/UDP` on your router, and point it to your windows PC
+Look up "port forwarding YOUR_ROUTER_MODEL_HERE" if you don't know how to do this
 
-Copy the client script (`steaming`) to `~/bin/`
-and make it executable (`chmod +x ~/bin/steaming`)
+Copy the client script (`steaming`) to `/usr/local/bin/`
 
 ## CONNECT
 start openvpn server on your PC (tray icon->connect)
 you may have to import the configuration for the first time
 
-Run this script  (`streaming --debug`)
+Run this script  (`sudo steaming --debug`)
 
 ## TODO
 - [x] add server config
