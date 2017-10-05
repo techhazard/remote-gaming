@@ -3,8 +3,14 @@
 echo "starting script"
 
 debug="false"
+silenterr=" 2>/dev/null "
+silent=" >/dev/null 2>&1 "
+silentvpn=" 2>/dev/null "
 if [[ "$1" == "--debug" ]];
 then
+	silenterr=""
+	silent=""
+	silentvpn=" | tee /var/log/openvpn.log"
 	debug="true";
 fi
 dbg() {
@@ -56,7 +62,7 @@ trap exit 1 2 3 15
 
 dbg "starting openvpn"
 
-openvpn --config /etc/openvpn/client.ovpn --askpass /etc/openvpn/pass >/var/log/openvpn.log 2>/var/log/openvpn.err &
+openvpn --config /etc/openvpn/client.ovpn --askpass /etc/openvpn/pass >/var/log/openvpn.log $silentvpn &
 echo $! > /var/run/openvpn.pid
 dbg "openvpn started with pid: $(cat /var/run/openvpn.pid)"
 dbg "waiting for vpn connection"
@@ -86,9 +92,9 @@ dbg "starting broadcast packet capture"
 #   tshark to capture the broadcast packets which are used by steam to detect in-home streamers
 #   xxd to transform the captured hexdecimal packets into binary
 #   socat to relay the broadcast to the vpn server over the tap interface
-bash -c "tshark -i ${DEFAULT_INTERFACE} -T fields -e data -l 'udp and dst port ${STEAM_PORT}' \
-	| script -q /dev/null -c 'xxd -r -p' \
-	| socat - UDP-DATAGRAM:10.8.0.1:${STEAM_PORT},broadcast,so-bindtodevice=${TAP_INTERFACE}\
+bash -c "tshark -i ${DEFAULT_INTERFACE} -T fields -e data -l 'udp and dst port ${STEAM_PORT}' $silenterr \
+	| script -q /dev/null -c 'xxd -r -p' $silenterr \
+	| socat - UDP-DATAGRAM:10.8.0.1:${STEAM_PORT},broadcast,so-bindtodevice=${TAP_INTERFACE} $silenterr \
 	"&
 
 echo $! > /var/run/openvpnup.pid
