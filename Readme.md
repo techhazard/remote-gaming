@@ -7,7 +7,7 @@ I wanted to do that myself, just not on AWS, since I already own a gaming rig.
 I did more-or-less the same setup, connectivity-wise, and am now able to connect with my PC!
 
 This is essentially the same setup as the blogpost, but you'll use the `steaming`  
-script instead of `up.sh` and `down.sh`. It will probably work for the AWS setup as well.
+script instead of `up.sh` and `down.sh`. It will probably work for the AWS setup as well
 
 ## REQUIREMENTS
 - server: a windows PC, reachable via port-forwarding
@@ -77,5 +77,10 @@ you may have to import the configuration for the first time
 
 Run this script  (`sudo steaming --debug`)
 
-## TODO
-- [x] add server config
+## Why?
+I made this because [the `up.sh` in the blogpost is mac specific](https://lg.io/assets/up.sh) and didn't work on my laptop.
+
+As it turns out, `nc` (short for `netcat`) on OSX can do something that ubuntu's `nc` can't do.  
+After trying out all variations (`netcat-openbsd`, `netcat-traditional`), I looked up the manpage of the OSX version which clarified why it didn't work in linux: on OSX, the `-b` flag binds `nc` to an interface; on linux, the `-b` flag enables broadcasting and  then tries to parse the interface name as a hostname, and the hostname as a port, and fails.
+
+I then replaced `nc` with `socat` and after some fiddling got it to work nicely. :slightly_smiling_face:
