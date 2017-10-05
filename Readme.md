@@ -14,24 +14,12 @@ script instead of `up.sh` and `down.sh`. It will probably work for the AWS setup
 - client: a linux pc (mac might work, if you can get the dependencies)
 
 ## SETUP
+
 ### Server
 Install openvpn on your windows PC; use the 64 bit version, unless your PC is 32 bits.  
 Please install all components
 
-Copy `server.ovpn` from this repo into `C:\Program Files\OpenVPN\config\`
-
-Open a powershell window and run the following commands:
-```powershell
-cd C:\Program Files\OpenVPN\easy-rsa
-init-config
-vars
-clean-all
-build-ca			(leave all answers blank)
-build-key-server server	(leave all answers blank except Common Name "server", yes to Sign and yes to Commit)
-build-key client		(leave all answers blank except Common Name "client", yes to Sign and yes to Commit)
-build-dh
-robocopy keys ../config ca.crt dh1024.pem server.crt server.key
-```
+Copy `server.ovpn` to `C:\Program Files\OpenVPN\config\server.ovpn`
 
 ### Client
 Download these files to your client (select "download as zip") and extract them.
@@ -45,12 +33,12 @@ to `/etc/openvpn/` on your client:
 Change the following in `client.ovpn`:
 - `MY_HOSTNAME` into the IP or domain name of the router/windows pc
 
-Copy `client.ovpn` from this repository into `/etc/openvpn/`
+Copy `client.ovpn` to `/etc/openvpn/client.ovpn`
 
 Open port `1194/UDP` on your router, and point it to your windows PC  
 Look up "port forwarding YOUR_ROUTER_MODEL_HERE" if you don't know how to do this
 
-Copy the client script (`steaming`) to `/usr/local/bin/`
+Copy the client script `steaming` to `/usr/local/bin/steaming`
 
 Install these tools on the client:
 - `route`
@@ -70,12 +58,66 @@ For debian/ubuntu:
 ```sh
 sudo apt install net-tools grep coreutils procps openvpn tshark bsdutils vim-common socat
 ```
+### Certificates
+You can generate them on either windows or on linux. No need to run both.
+
+#### Windows
+Open a powershell window and run the following commands:
+```powershell
+cd C:\Program Files\OpenVPN\easy-rsa
+init-config
+vars
+clean-all
+build-ca			(leave all answers blank)
+build-key-server server	(leave all answers blank except Common Name "server", yes to Sign and yes to Commit)
+build-key client		(leave all answers blank except Common Name "client", yes to Sign and yes to Commit)
+build-dh
+robocopy keys ../config ca.crt dh1024.pem server.crt server.key
+```
+
+#### Linux
+Install easy-rsa from https://github.com/OpenVPN/easy-rsa/releases
+extract, enter the extracted directory and run the following:
+```sh
+./easyrsa init-pki
+
+# choose a password of at least 4 charachters for your root CA
+# you can press enter on all other questions
+./easyrsa build-ca 
+
+# the first password is a new one for your server private key
+# the second one is the password for your root CA
+./easyrsa build-server-full server
+
+# the first password is a new one for your client private key
+# the second one is the password for your root CA
+./easyrsa build-client-full client
+
+./easyrsa gen-dh
+```
+#### Move the files
+Make sure you put these files in the correct locations, note that `ca.crt` is needed on both sides
+
+| filename   | location on server                         | location on client      |
+| ---------- | ------------------------------------------ | ----------------------- |
+| ca.crt     | C:\Program Files\OpenVPN\config\ca.crt     | /etc/openvpn/ca.crt     |
+| dh.pem     | C:\Program Files\OpenVpn\config\dh1024.pem | -                       |
+| server.crt | C:\Program Files\OpenVPN\config\server.crt | -                       |
+| server.key | C:\Program Files\OpenVPN\config\server.key | -                       |
+| client.crt | -                                          | /etc/openvpn/client.crt |
+| client.key | -                                          | /etc/openvpn/client.key |
+
+Put the password of your client's private key in `/etc/openvpn/pass`
+
 
 ## CONNECT
 start openvpn server on your PC (tray icon->connect)
 you may have to import the configuration for the first time
 
-Run this script  (`sudo steaming --debug`)
+Run this script on the client:
+```sh
+sudo steaming --debug
+```
 
 ## Why?
 I made this because [the `up.sh` in the blogpost is mac specific](https://lg.io/assets/up.sh) and didn't work on my laptop.
