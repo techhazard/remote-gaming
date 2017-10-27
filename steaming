@@ -70,9 +70,9 @@ dbg "waiting for vpn connection"
 i=0
 while ! grep 'Initialization Sequence Completed' /var/log/openvpn.log;
 do
-	sleep 0.2
+	sleep 0.3
 	((i++))
-	# abort if it takes 20s
+	# abort if it takes 30s
 	if [[ $i -gt 100 ]];
 	then
 		exit 3
