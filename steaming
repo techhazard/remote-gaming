@@ -52,8 +52,8 @@ dbg "default interface set to $DEFAULT_INTERFACE"
 # we then use the exit command we all know and love <3
 exit() {
 	echo -n "cleaning up..."
-	sudo kill $(cat /var/run/openvpn.pid) 2>/dev/null
-	sudo pkill -P $(cat /var/run/openvpnup.pid)
+	[ -f /var/run/openvpn.pid ]   && sudo kill     "$(cat /var/run/openvpn.pid)"   2>/dev/nulL
+	[ -f /var/run/openvpnup.pid ] && sudo pkill -P "$(cat /var/run/openvpnup.pid)"
 	echo "done"
 	builtin exit $1
 }
