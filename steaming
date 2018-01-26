@@ -6,11 +6,13 @@ debug="false"
 silenterr=" 2>/dev/null "
 silent=" >/dev/null 2>&1 "
 silentvpn=" 2>/dev/null "
+openvpn_pidfile="/tmp/openvpn.pid"
+packetcapture_pidfile="/tmp/packet_capture.pid"
+
 if [[ "$1" == "--debug" ]];
 then
 	silenterr=""
 	silent=""
-	silentvpn=" | tee /var/log/openvpn.log"
 	debug="true";
 fi
 dbg() {
@@ -52,29 +54,33 @@ dbg "default interface set to $DEFAULT_INTERFACE"
 # we then use the exit command we all know and love <3
 exit() {
 	echo -n "cleaning up..."
-	[ -f /var/run/openvpn.pid ]   && sudo kill     "$(cat /var/run/openvpn.pid)"   2>/dev/nulL
-	[ -f /var/run/openvpnup.pid ] && sudo pkill -P "$(cat /var/run/openvpnup.pid)"
+	[ -f "${openvpn_pidfile}" ]   && sudo kill     "$(cat "${openvpn_pidfile}")"   2>/dev/null
+	[ -f "${packetcapture_pidfile}" ] && sudo pkill -P "$(cat "${packetcapture_pidfile}")"
 	echo "done"
 	builtin exit $1
 }
 
 trap exit 1 2 3 15
 
+set -x
 dbg "starting openvpn"
-
-openvpn --config /etc/openvpn/client.ovpn --askpass /etc/openvpn/pass >/var/log/openvpn.log $silentvpn &
-echo $! > /var/run/openvpn.pid
-dbg "openvpn started with pid: $(cat /var/run/openvpn.pid)"
+openvpnlog=">"
+[ $debug == "true" ] && tail -F /tmp/openvpn.{log,err} &
+openvpn --config /etc/openvpn/client.ovpn --askpass ${passwordfile:-/etc/openvpn/pass} > /tmp/openvpn.log 2>&1 &
+echo $! > "${openvpn_pidfile}"
+dbg "openvpn started with pid: $(cat "${openvpn_pidfile}")"
 dbg "waiting for vpn connection"
+set +x
 
 i=0
-while ! grep 'Initialization Sequence Completed' /var/log/openvpn.log;
+while ! grep 'Initialization Sequence Completed' /tmp/openvpn.log;
 do
 	sleep 0.3
 	((i++))
 	# abort if it takes 30s
 	if [[ $i -gt 100 ]];
 	then
+		echo "Taking too long" >&2
 		exit 3
 	fi
 done
@@ -97,8 +103,8 @@ bash -c "tshark -i ${DEFAULT_INTERFACE} -T fields -e data -l 'udp and dst port $
 	| socat - UDP-DATAGRAM:10.8.0.1:${STEAM_PORT},broadcast,so-bindtodevice=${TAP_INTERFACE} $silenterr \
 	"&
 
-echo $! > /var/run/openvpnup.pid
-dbg "packet capture started with pid: $(cat /var/run/openvpnup.pid)"
+echo $! > "${packetcapture_pidfile}"
+dbg "packet capture started with pid: $(cat "${packetcapture_pidfile}")"
 
 echo "script finished, shut down with Ctrl+C"
 wait
